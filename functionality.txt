@@ -1,0 +1,5 @@
+Similarities:
+✅ Same multi-service architecture
+✅ Same data flow (speech → text → AI → speech)
+✅ Same capability to handle conversations
+✅ Same ability to integrate with APIs
