@@ -4,11 +4,11 @@ from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 
 from app.config import settings
-from app.database.connection import init_db, get_db, engine
-from app.database.seed import seed_database
-from app.routes import chat, humor, personality
-from app.models.schemas import HealthCheck
-from app.models.database_models import Base
+from database.connection import init_db, get_db, engine
+from database.seed import seed_database
+from routes import chat, humor, personality
+from modals.schemas import HealthCheck
+from modals.database_models import Base
 
 
 @asynccontextmanager
@@ -18,11 +18,11 @@ async def lifespan(app: FastAPI):
     print("🤖 EMO AI Backend starting up...")
     print(f"🎭 Personality: {settings.emo_personality}")
     print(f"🤖 EMO Name: {settings.emo_name}")
-    
+
     # Initialize database
     print("📊 Initializing database...")
     init_db()
-    
+
     # Seed database if empty
     print("🌱 Checking database seed status...")
     db = next(get_db())
@@ -30,13 +30,13 @@ async def lifespan(app: FastAPI):
         seed_database(db)
     finally:
         db.close()
-    
+
     print("✅ EMO AI Backend is ready!")
     print(f"🌐 API running on http://{settings.api_host}:{settings.api_port}")
     print(f"📚 Docs available at http://{settings.api_host}:{settings.api_port}/docs")
-    
+
     yield
-    
+
     # Shutdown
     print("👋 EMO AI Backend shutting down... Bye bye!")
 
@@ -70,7 +70,7 @@ app = FastAPI(
     *Made with 💕 to bring joy and cuteness to your day!*
     """,
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -91,8 +91,8 @@ app.include_router(personality.router)
 @app.get("/", tags=["Root"])
 async def root():
     """
-    Welcome endpoint! 
-    
+    Welcome endpoint!
+
     EMO says hi! 👋✨
     """
     return {
@@ -100,7 +100,7 @@ async def root():
         "emo_name": settings.emo_name,
         "personality": settings.emo_personality,
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
     }
 
 
@@ -108,31 +108,34 @@ async def root():
 async def health_check(db: Session = Depends(get_db)):
     """
     Health check endpoint.
-    
+
     Check if EMO is awake and ready to chat! 🏥
     """
-    
+
     # Test database connection
     try:
-        db.execute("SELECT 1")
+        from sqlalchemy import text
+
+        db.execute(text("SELECT 1"))
         db_connected = True
     except Exception:
         db_connected = False
-    
+
     return HealthCheck(
         status="healthy" if db_connected else "unhealthy",
         emo_name=settings.emo_name,
         personality=settings.emo_personality,
         database_connected=db_connected,
-        api_ready=True
+        api_ready=True,
     )
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "main:app",
         host=settings.api_host,
         port=settings.api_port,
-        reload=settings.api_reload
+        reload=settings.api_reload,
     )
