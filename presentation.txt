@@ -1,0 +1,1052 @@
+Inspiration -->
+
+
+1.https://www.youtube.com/watch?v=qnOfEIzI9Ko&list=PLiWvrBTWHMvp91FTXhaPMI-JyPwO74Swj&index=98
+2.https://www.youtube.com/watch?v=1XjXJEo2ATw&list=PLiWvrBTWHMvp91FTXhaPMI-JyPwO74Swj&index=95
+
+
+Main Operating System -->
+
+
+1. My operating system uses archlinux as base and uses niri wm and uses noctalia-shell as quickshell and it uses a philosophy that everything will be installed (with dependencies) through offline using sudo pacman -U *pkg.tar.zst --noconfirm and it is the only operating system which will provide solutions to the errors.
+2. It will have advaned grub loader to detect operating system.
+
+Functionality -->
+
+1. My software will be like jarwis who controls the whole laptop or computer but will react like emo ai.
+
+Main Errors -->
+
+# Arch Linux + Niri WM: Complete Troubleshooting Guide
+## GRUB Errors & System Issues
+
+---
+
+## Table of Contents
+1. [GRUB Bootloader Errors](#grub-bootloader-errors)
+2. [Arch Linux System Issues](#arch-linux-system-issues)
+3. [Niri Window Manager Issues](#niri-window-manager-issues)
+4. [Package Manager Problems](#package-manager-problems)
+5. [Graphics & Display Issues](#graphics--display-issues)
+6. [Audio Problems](#audio-problems)
+7. [Network Issues](#network-issues)
+8. [Boot & System Recovery](#boot--system-recovery)
+
+---
+
+## GRUB Bootloader Errors
+
+### 1. **"error: unknown filesystem" (GRUB Rescue)**
+
+**Problem**: Boot fails, drops to `grub rescue>` prompt
+
+**Cause**: GRUB can't find partition with `/boot`
+
+**Solution**:
+```bash
+# At grub rescue prompt:
+ls  # Lists all partitions (e.g., (hd0) (hd0,gpt1) (hd0,gpt2))
+
+# Find your Linux partition (try each)
+ls (hd0,gpt2)/  # Should show boot/ or vmlinuz
+
+# Once found:
+set prefix=(hd0,gpt2)/boot/grub
+set root=(hd0,gpt2)
+insmod normal
+insmod linux
+normal
+
+# After booting into Arch, fix GRUB permanently:
+sudo grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+```
+
+---
+
+### 2. **"error: file '/boot/vmlinuz-linux' not found"**
+
+**Problem**: GRUB can't find kernel
+
+**Cause**: Kernel not installed or wrong partition
+
+**Solution**:
+```bash
+# Boot from Arch USB
+# Mount your system
+mount /dev/sda2 /mnt  # Your root partition
+mount /dev/sda1 /mnt/boot  # Your boot partition (if separate)
+arch-chroot /mnt
+
+# Reinstall kernel
+pacman -S linux linux-headers
+
+# Regenerate GRUB config
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# Exit and reboot
+exit
+umount -R /mnt
+reboot
+```
+
+---
+
+### 3. **"error: no such device: UUID=..."**
+
+**Problem**: GRUB can't find partition by UUID
+
+**Cause**: UUID changed or partition moved
+
+**Solution**:
+```bash
+# Boot from Arch USB and chroot
+mount /dev/sda2 /mnt
+mount /dev/sda1 /mnt/boot
+arch-chroot /mnt
+
+# Find correct UUID
+lsblk -f
+# or
+blkid
+
+# Edit GRUB config
+nano /etc/default/grub
+# Update: GRUB_CMDLINE_LINUX="... root=UUID=your-correct-uuid"
+
+# Regenerate config
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# Reinstall GRUB
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+
+exit
+reboot
+```
+
+---
+
+### 4. **"Minimal BASH-like line editing is supported"**
+
+**Problem**: GRUB drops to minimal shell
+
+**Cause**: Corrupted GRUB config
+
+**Solution**:
+```bash
+# At grub> prompt, manually boot:
+set root=(hd0,gpt2)  # Your Linux partition
+linux /boot/vmlinuz-linux root=/dev/sda2 rw
+initrd /boot/initramfs-linux.img
+boot
+
+# After booting:
+sudo grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+```
+
+---
+
+### 5. **"error: secure boot forbids loading module from (hd0,gpt2)"**
+
+**Problem**: Secure Boot blocking GRUB
+
+**Solution**:
+```bash
+# Option 1: Disable Secure Boot in BIOS/UEFI
+# Reboot → Enter BIOS → Security → Disable Secure Boot
+
+# Option 2: Sign GRUB for Secure Boot
+sudo pacman -S sbctl
+sudo sbctl status
+sudo sbctl create-keys
+sudo sbctl enroll-keys --microsoft  # Include Microsoft keys
+sudo sbctl sign -s /boot/EFI/GRUB/grubx64.efi
+sudo sbctl sign -s /boot/vmlinuz-linux
+sudo sbctl sign -s /boot/initramfs-linux.img
+```
+
+---
+
+### 6. **Dual Boot: Windows Entry Missing**
+
+**Problem**: GRUB doesn't show Windows option
+
+**Solution**:
+```bash
+# Install os-prober
+sudo pacman -S os-prober
+
+# Enable os-prober in GRUB
+sudo nano /etc/default/grub
+# Add or uncomment:
+GRUB_DISABLE_OS_PROBER=false
+
+# Mount Windows EFI partition
+sudo mkdir -p /mnt/windows
+sudo mount /dev/sda1 /mnt/windows  # Your Windows EFI partition
+
+# Regenerate GRUB config
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+# Verify Windows entry is found
+# You should see: "Found Windows Boot Manager on /dev/sdaX"
+```
+
+---
+
+### 7. **GRUB Doesn't Show on Boot (Direct Windows Boot)**
+
+**Problem**: System boots straight to Windows, no GRUB menu
+
+**Cause**: Windows overwrote boot manager or wrong boot order
+
+**Solution**:
+```bash
+# Boot from Arch USB
+mount /dev/sda2 /mnt
+mount /dev/sda1 /mnt/boot  # EFI partition
+arch-chroot /mnt
+
+# Reinstall GRUB
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB --recheck
+
+# Make GRUB default boot entry
+efibootmgr  # Check boot order
+efibootmgr -o 0001,0000  # Set GRUB first (replace with your numbers)
+
+# Or manually set default
+efibootmgr -n 0001  # Boot GRUB next time
+
+exit
+reboot
+
+# Then in BIOS: Change boot order to put GRUB first
+```
+
+---
+
+### 8. **"error: ../../grub-core/kern/efi/mm.c:XXX:out of memory"**
+
+**Problem**: GRUB runs out of memory loading kernel
+
+**Solution**:
+```bash
+# Edit GRUB config
+sudo nano /etc/default/grub
+
+# Add to GRUB_CMDLINE_LINUX:
+GRUB_CMDLINE_LINUX="... efi=runtime"
+
+# Or increase GRUB memory:
+# In /boot/grub/grub.cfg (manual edit, will be overwritten)
+set gfxpayload=keep
+
+# Better: Simplify initramfs
+sudo nano /etc/mkinitcpio.conf
+# Remove unnecessary modules from MODULES=()
+
+sudo mkinitcpio -P
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+```
+
+---
+
+### 9. **Black Screen After GRUB Menu**
+
+**Problem**: Select entry → black screen, no boot
+
+**Cause**: Graphics driver conflict with early KMS
+
+**Solution**:
+```bash
+# At GRUB menu: Press 'e' to edit boot entry
+# Find line starting with 'linux'
+# Add at the end: nomodeset
+
+# Boot with that entry
+# After booting, make permanent:
+sudo nano /etc/default/grub
+GRUB_CMDLINE_LINUX="... nomodeset"
+
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+# Or if you need graphics: Install proper drivers
+# For NVIDIA:
+sudo pacman -S nvidia nvidia-utils
+sudo mkinitcpio -P
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+reboot  # Remove nomodeset after driver install
+```
+
+---
+
+### 10. **GRUB Menu Doesn't Show (Boots Immediately)**
+
+**Problem**: No time to select OS, boots default immediately
+
+**Solution**:
+```bash
+# Edit GRUB timeout
+sudo nano /etc/default/grub
+
+# Change:
+GRUB_TIMEOUT=5  # Seconds to show menu
+GRUB_TIMEOUT_STYLE=menu  # Always show menu
+
+# Or force menu by holding Shift during boot
+
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+```
+
+---
+
+## Arch Linux System Issues
+
+### 11. **"Failed to start Light Display Manager" (No GUI on Niri)**
+
+**Problem**: Can't start graphical session
+
+**Solution**:
+```bash
+# Niri doesn't use a display manager, it's launched directly
+# Check if niri is installed
+pacman -Q niri
+
+# If not:
+yay -S niri-git  # or niri from AUR
+
+# Start niri from TTY
+niri
+
+# If errors, check logs:
+journalctl -xe | grep -i niri
+
+# Make niri auto-start on login:
+# Add to ~/.bash_profile or ~/.zprofile:
+if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" = 1 ]; then
+    exec niri
+fi
+```
+
+---
+
+### 12. **"error: failed to commit transaction (conflicting files)"**
+
+**Problem**: Package conflict during installation
+
+**Solution**:
+```bash
+# See which files conflict
+sudo pacman -S package-name
+
+# If safe to overwrite:
+sudo pacman -S --overwrite '*' package-name
+
+# Or if specific file:
+sudo pacman -S --overwrite /path/to/file package-name
+
+# Remove orphaned packages
+sudo pacman -Rns $(pacman -Qtdq)
+```
+
+---
+
+### 13. **"error: failed to prepare transaction (could not satisfy dependencies)"**
+
+**Problem**: Dependency hell in AUR
+
+**Solution**:
+```bash
+# Update system first
+sudo pacman -Syu
+
+# Clear package cache
+yay -Sc
+
+# Rebuild AUR package database
+yay -Syy
+
+# Force reinstall dependencies
+yay -S package-name --rebuild
+
+# Or use alternative AUR helper
+paru -S package-name
+```
+
+---
+
+### 14. **Pacman Database Locked**
+
+**Problem**: `error: failed to init transaction (unable to lock database)`
+
+**Solution**:
+```bash
+# Check if pacman is running
+ps aux | grep pacman
+
+# If not running, remove lock
+sudo rm /var/lib/pacman/db.lck
+
+# Update package database
+sudo pacman -Syy
+```
+
+---
+
+### 15. **Keyring Issues "signature is invalid"**
+
+**Problem**: Can't install packages, signature errors
+
+**Solution**:
+```bash
+# Initialize keyring
+sudo pacman-key --init
+sudo pacman-key --populate archlinux
+
+# Update archlinux-keyring
+sudo pacman -S archlinux-keyring
+
+# If still failing, refresh keys
+sudo pacman-key --refresh-keys
+
+# Nuclear option: Reset keyring
+sudo rm -rf /etc/pacman.d/gnupg
+sudo pacman-key --init
+sudo pacman-key --populate archlinux
+sudo pacman -S archlinux-keyring
+```
+
+---
+
+### 16. **System Won't Boot After Update (Kernel Panic)**
+
+**Problem**: Black screen with kernel panic after `pacman -Syu`
+
+**Solution**:
+```bash
+# Boot from GRUB menu into fallback kernel
+# Select: "Arch Linux (fallback initramfs)"
+
+# After booting, check what was updated
+grep -i 'upgraded' /var/log/pacman.log | tail -20
+
+# If NVIDIA driver issue:
+sudo pacman -S linux-headers nvidia-dkms
+sudo mkinitcpio -P
+
+# If other kernel module issue:
+sudo mkinitcpio -P
+reboot
+```
+
+---
+
+### 17. **"Error: File /boot/... not found" During Boot**
+
+**Problem**: Missing initramfs or kernel
+
+**Solution**:
+```bash
+# Boot from Arch USB
+mount /dev/sda2 /mnt
+mount /dev/sda1 /mnt/boot
+arch-chroot /mnt
+
+# Reinstall kernel and generate initramfs
+pacman -S linux linux-headers
+mkinitcpio -P
+
+# Update GRUB
+grub-mkconfig -o /boot/grub/grub.cfg
+
+exit
+reboot
+```
+
+---
+
+## Niri Window Manager Issues
+
+### 18. **Niri Won't Start - "Could not connect to Wayland"**
+
+**Problem**: Niri fails to launch from TTY
+
+**Solution**:
+```bash
+# Check if running under X11 (Niri needs Wayland)
+echo $XDG_SESSION_TYPE
+
+# Install required packages
+sudo pacman -S wayland wayland-protocols
+
+# Check if user is in video/input groups
+groups $USER
+sudo usermod -aG video,input $USER
+
+# Reboot and try again
+reboot
+
+# Launch from clean TTY (Ctrl+Alt+F2)
+niri
+
+# Check logs if failing:
+journalctl -xe --user | grep niri
+```
+
+---
+
+### 19. **No Applications Launch in Niri**
+
+**Problem**: Terminal or apps won't open
+
+**Solution**:
+```bash
+# Niri needs a terminal and launcher
+sudo pacman -S alacritty foot
+
+# Install launcher
+sudo pacman -S fuzzel wofi
+
+# Configure niri keybindings
+mkdir -p ~/.config/niri
+nano ~/.config/niri/config.kdl
+
+# Add basic bindings:
+binds {
+    Mod+Return { spawn "alacritty"; }
+    Mod+D { spawn "fuzzel"; }
+    Mod+Shift+Q { quit; }
+}
+
+# Reload niri config
+# (default: Mod+Shift+R)
+```
+
+---
+
+### 20. **Niri Black Screen / No Displays**
+
+**Problem**: Niri starts but screen is black
+
+**Solution**:
+```bash
+# Check display configuration
+niri msg outputs  # If niri is running
+
+# Or check manually:
+wayland-info | grep output
+
+# Edit niri config for outputs
+nano ~/.config/niri/config.kdl
+
+# Add output configuration:
+output "HDMI-A-1" {
+    mode "1920x1080@60";
+    position x=0 y=0;
+}
+
+# Check graphics drivers
+lspci | grep -i vga
+# Install appropriate driver:
+# Intel:
+sudo pacman -S mesa vulkan-intel
+# AMD:
+sudo pacman -S mesa vulkan-radeon
+# NVIDIA:
+sudo pacman -S nvidia nvidia-utils  # or nvidia-open
+```
+
+---
+
+### 21. **Niri Configuration Not Loading**
+
+**Problem**: Changes to config.kdl don't apply
+
+**Solution**:
+```bash
+# Check config syntax
+niri validate ~/.config/niri/config.kdl
+
+# Reload config (in running niri)
+niri msg reload
+
+# Or restart niri (Mod+Shift+E usually)
+
+# Check config location
+# Should be: ~/.config/niri/config.kdl
+
+# View default config for reference
+cp /usr/share/niri/default-config.kdl ~/.config/niri/config.kdl.example
+```
+
+---
+
+### 22. **Screen Tearing in Niri**
+
+**Problem**: Visual tearing during animations
+
+**Solution**:
+```bash
+# Enable VRR (Variable Refresh Rate) if supported
+nano ~/.config/niri/config.kdl
+
+output "DP-1" {
+    mode "2560x1440@144";
+    vrr;  # Add this
+}
+
+# Or enable in output settings:
+animations {
+    slowdown 1.0;  # Lower if too fast
+}
+
+# Check if compositor is running properly
+echo $XDG_CURRENT_DESKTOP  # Should be blank or "niri"
+```
+
+---
+
+### 23. **HiDPI Scaling Issues in Niri**
+
+**Problem**: Text too small on 4K display
+
+**Solution**:
+```bash
+# Configure scaling in niri
+nano ~/.config/niri/config.kdl
+
+output "eDP-1" {
+    mode "3840x2160@60";
+    scale 2.0;  # 200% scaling
+}
+
+# Or fractional scaling:
+output "eDP-1" {
+    scale 1.5;
+}
+
+# Reload config
+niri msg reload
+```
+
+---
+
+### 24. **Clipboard Not Working in Niri**
+
+**Problem**: Can't copy/paste between apps
+
+**Solution**:
+```bash
+# Install clipboard manager for Wayland
+sudo pacman -S wl-clipboard
+
+# Test clipboard:
+echo "test" | wl-copy
+wl-paste
+
+# For persistent clipboard:
+yay -S cliphist
+
+# Add to niri startup:
+nano ~/.config/niri/config.kdl
+
+spawn-at-startup "wl-paste --watch cliphist store";
+```
+
+---
+
+### 25. **Screenshots Not Working in Niri**
+
+**Problem**: Can't take screenshots
+
+**Solution**:
+```bash
+# Install screenshot tools for Wayland
+sudo pacman -S grim slurp swappy
+
+# Take screenshot:
+grim ~/screenshot.png  # Full screen
+grim -g "$(slurp)" ~/screenshot.png  # Selection
+
+# Add to niri bindings:
+nano ~/.config/niri/config.kdl
+
+binds {
+    Print { spawn "sh" "-c" "grim -g \"$(slurp)\" - | swappy -f -"; }
+}
+```
+
+---
+
+## Graphics & Display Issues
+
+### 26. **NVIDIA Driver Black Screen on Arch**
+
+**Problem**: Black screen after NVIDIA driver install
+
+**Solution**:
+```bash
+# Boot with nomodeset (press 'e' in GRUB)
+# Add to linux line: nomodeset
+
+# After booting:
+sudo pacman -R nvidia nvidia-utils
+sudo pacman -S nvidia-dkms nvidia-utils linux-headers
+
+# Add early KMS
+sudo nano /etc/mkinitcpio.conf
+# Add to MODULES:
+MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)
+
+sudo mkinitcpio -P
+
+# Add kernel parameters
+sudo nano /etc/default/grub
+GRUB_CMDLINE_LINUX="... nvidia-drm.modeset=1"
+
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+reboot
+```
+
+---
+
+### 27. **Multiple Monitor Issues**
+
+**Problem**: Second monitor not detected or wrong resolution
+
+**Solution**:
+```bash
+# For Niri, configure in config.kdl
+nano ~/.config/niri/config.kdl
+
+output "HDMI-A-1" {
+    mode "1920x1080@60";
+    position x=0 y=0;
+}
+
+output "DP-1" {
+    mode "2560x1440@144";
+    position x=1920 y=0;  # To the right
+}
+
+# Reload
+niri msg reload
+
+# Or use wlr-randr for testing:
+sudo pacman -S wlr-randr
+wlr-randr --output HDMI-A-1 --mode 1920x1080@60
+```
+
+---
+
+### 28. **Screen Flickering/Freezing**
+
+**Problem**: Random screen freezes or flickers
+
+**Solution**:
+```bash
+# Update all graphics drivers
+sudo pacman -Syu mesa lib32-mesa vulkan-icd-loader
+
+# For Intel, disable panel self-refresh:
+sudo nano /etc/default/grub
+GRUB_CMDLINE_LINUX="... i915.enable_psr=0"
+
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+# For AMD:
+GRUB_CMDLINE_LINUX="... amdgpu.dc=0"
+
+reboot
+```
+
+---
+
+## Audio Problems
+
+### 29. **No Sound in Arch Linux**
+
+**Problem**: Audio not working
+
+**Solution**:
+```bash
+# Install audio stack
+sudo pacman -S pipewire pipewire-pulse pipewire-alsa pipewire-jack
+sudo pacman -S wireplumber
+
+# Enable pipewire
+systemctl --user enable --now pipewire pipewire-pulse wireplumber
+
+# Check sound card
+aplay -l
+
+# Test audio
+speaker-test -c2
+
+# GUI mixer (optional)
+sudo pacman -S pavucontrol
+pavucontrol
+```
+
+---
+
+### 30. **Bluetooth Audio Not Working**
+
+**Problem**: Bluetooth headphones connect but no sound
+
+**Solution**:
+```bash
+# Install Bluetooth packages
+sudo pacman -S bluez bluez-utils pipewire-pulse
+
+# Enable Bluetooth
+sudo systemctl enable --now bluetooth
+
+# Install audio codecs
+sudo pacman -S libldac
+
+# Connect via bluetoothctl:
+bluetoothctl
+power on
+agent on
+default-agent
+scan on
+# Note MAC address
+pair XX:XX:XX:XX:XX:XX
+trust XX:XX:XX:XX:XX:XX
+connect XX:XX:XX:XX:XX:XX
+
+# Set as audio output in pavucontrol
+```
+
+---
+
+## Network Issues
+
+### 31. **WiFi Not Working After Install**
+
+**Problem**: No wireless networks found
+
+**Solution**:
+```bash
+# Check if WiFi card is detected
+ip link
+lspci | grep -i network
+
+# Install network tools
+sudo pacman -S networkmanager
+sudo systemctl enable --now NetworkManager
+
+# GUI for WiFi
+sudo pacman -S network-manager-applet
+nm-applet &
+
+# Or CLI:
+nmcli device wifi list
+nmcli device wifi connect "SSID" password "password"
+```
+
+---
+
+### 32. **Ethernet Not Working**
+
+**Problem**: Wired connection not detected
+
+**Solution**:
+```bash
+# Check interface
+ip link
+
+# Bring interface up
+sudo ip link set enp0s25 up  # Replace with your interface
+
+# Use NetworkManager
+sudo systemctl enable --now NetworkManager
+nmcli connection show
+nmcli connection up "Wired connection 1"
+
+# Or systemd-networkd:
+sudo nano /etc/systemd/network/20-wired.network
+
+[Match]
+Name=enp0s25
+
+[Network]
+DHCP=yes
+
+sudo systemctl enable --now systemd-networkd
+```
+
+---
+
+## Boot & System Recovery
+
+### 33. **Emergency Mode / "Failed to mount /boot"**
+
+**Problem**: System boots into emergency mode
+
+**Solution**:
+```bash
+# Check fstab for errors
+nano /etc/fstab
+
+# Get correct UUID:
+blkid
+
+# Fix fstab entry:
+UUID=your-boot-uuid  /boot  vfat  defaults  0  2
+
+# Or comment out /boot line temporarily:
+# UUID=...  /boot  vfat  defaults  0  2
+
+# Reboot
+systemctl reboot
+```
+
+---
+
+### 34. **Full System Recovery (Can't Boot at All)**
+
+**Problem**: Complete boot failure, need to recover
+
+**Solution**:
+```bash
+# Boot from Arch USB
+
+# Mount your partitions
+lsblk  # Identify partitions
+mount /dev/sda2 /mnt  # Root
+mount /dev/sda1 /mnt/boot  # Boot/EFI
+mount /dev/sda3 /mnt/home  # Home (if separate)
+
+# Chroot into system
+arch-chroot /mnt
+
+# Now you're in your system, fix issues:
+# - Reinstall kernel: pacman -S linux linux-headers
+# - Rebuild initramfs: mkinitcpio -P
+# - Reinstall GRUB: grub-install --target=x86_64-efi --efi-directory=/boot
+# - Regenerate GRUB config: grub-mkconfig -o /boot/grub/grub.cfg
+# - Fix fstab: nano /etc/fstab
+# - Update system: pacman -Syu
+
+# Exit and reboot
+exit
+umount -R /mnt
+reboot
+```
+
+---
+
+### 35. **Forgot Root Password**
+
+**Problem**: Can't login as root
+
+**Solution**:
+```bash
+# At GRUB menu, press 'e'
+# Find linux line, add to end:
+init=/bin/bash
+
+# Boot (Ctrl+X or F10)
+
+# Remount root as read-write
+mount -o remount,rw /
+
+# Change root password
+passwd
+
+# Sync and reboot
+sync
+reboot -f
+```
+
+---
+
+## Prevention & Maintenance
+
+### Best Practices for Arch + Niri
+
+```bash
+# Regular maintenance
+sudo pacman -Syu  # Update system weekly
+sudo pacman -Sc   # Clean cache monthly
+paccache -rk 2    # Keep only 2 versions
+
+# Backup GRUB config before changes
+sudo cp /boot/grub/grub.cfg /boot/grub/grub.cfg.backup
+
+# Backup important configs
+tar -czf ~/niri-backup.tar.gz ~/.config/niri/
+
+# Check for failed services
+systemctl --failed
+
+# Monitor logs
+journalctl -p 3 -xb  # Errors from current boot
+
+# Keep fallback kernel
+# Don't remove linux-lts or old kernels until new one boots
+```
+
+---
+
+## Quick Reference Commands
+
+### GRUB
+```bash
+# Reinstall GRUB (UEFI)
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# Check boot entries
+efibootmgr
+
+# Change boot order
+efibootmgr -o 0001,0000
+```
+
+### Niri
+```bash
+# Start niri
+niri
+
+# Validate config
+niri validate ~/.config/niri/config.kdl
+
+# Reload config
+niri msg reload
+
+# Query outputs
+niri msg outputs
+
+# View keybindings
+cat ~/.config/niri/config.kdl | grep -A 20 "binds {"
+```
+
+### System Recovery
+```bash
+# Arch chroot from live USB
+mount /dev/sdXY /mnt
+mount /dev/sdXZ /mnt/boot
+arch-chroot /mnt
+
+# Rebuild everything
+mkinitcpio -P
+grub-mkconfig -o /boot/grub/grub.cfg
+pacman -Syu
+```
+
+---
+
+**Pro Tip**: Before major system updates, create a backup:
+```bash
+sudo timeshift --create --comments "Before update"
+# Or
+sudo snapper create --description "Pre-update snapshot"
+```
+
+---
+
+*Good luck! Arch + Niri is powerful but needs love. 🐧✨*

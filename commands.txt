@@ -1,0 +1,23 @@
+1. Greetings (Neutral/Happy/Snarky)
+"Hi EMO!"
+"Hello there"
+"Hey robot"
+2. Praise (Love/Cool/Excited)
+"I love you EMO" (Triggers Heart eyes)
+"You are awesome!" (Triggers Excited or Cool face)
+"Good job buddy"
+3. Entertainment (Laughter/Smart)
+"Tell me a joke" (Triggers the Laughing face)
+"Make me laugh"
+4. Insults (Bored/Snarky/Thinking)
+"You are stupid" (EMO will roast you back)
+"This is dumb"
+"You are bad"
+5. Curiosity (Thinking/Smart/Confused)
+"Are you smart?"
+"What are you thinking?"
+"How do you work?"
+6. Random/Unsupported (Dead/Confused)
+"What is the meaning of life?"
+"Do you like pizza?"
+"Asdfghjkl" (Standard "I don't understand" reactions)
