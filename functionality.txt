@@ -3,3 +3,21 @@ Similarities:
 ✅ Same data flow (speech → text → AI → speech)
 ✅ Same capability to handle conversations
 ✅ Same ability to integrate with APIs
+
+Backend -->
+
+# Install
+sudo pacman -S xdotool
+
+# Move cursor to absolute coordinates (x, y)
+xdotool mousemove 500 300
+
+# Move cursor relative to current position
+xdotool mousemove_relative 100 50
+
+# Click
+xdotool click 1  # left click
+xdotool click 3  # right click
+
+
+
