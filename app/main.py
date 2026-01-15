@@ -1,4 +1,5 @@
 """FastAPI WebSocket Server for AI Mouse Agent"""
+
 import logging
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -6,13 +7,12 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import uvicorn
-from config import settings
-from agent import MouseAgent
+from WebSocket.config import settings
+from WebSocket.agent import MouseAgent
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="AI Mouse Agent",
     description="AI-powered mouse control using vision and voice commands",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Add CORS middleware
@@ -41,22 +41,22 @@ active_connections: List[WebSocket] = []
 
 class ConnectionManager:
     """Manages WebSocket connections"""
-    
+
     def __init__(self):
         self.active_connections: List[WebSocket] = []
-    
+
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
         logger.info(f"New WebSocket connection. Total: {len(self.active_connections)}")
-    
+
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
         logger.info(f"WebSocket disconnected. Total: {len(self.active_connections)}")
-    
+
     async def send_message(self, websocket: WebSocket, message: dict):
         await websocket.send_json(message)
-    
+
     async def broadcast(self, message: dict):
         for connection in self.active_connections:
             try:
@@ -356,45 +356,46 @@ async def get_home():
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for receiving voice commands"""
     await manager.connect(websocket)
-    
+
     try:
         while True:
             # Receive message from client
             data = await websocket.receive_text()
             message = json.loads(data)
-            
+
             logger.info(f"Received message: {message}")
-            
+
             # Handle different message types
-            if message.get('type') == 'command':
-                command = message.get('command', '')
-                
+            if message.get("type") == "command":
+                command = message.get("command", "")
+
                 # Process the command with the AI agent
                 result = await agent.process_command(command)
-                
+
                 # Send result back to client
-                await manager.send_message(websocket, {
-                    'type': 'result',
-                    'success': result.get('success', False),
-                    'message': result.get('message', ''),
-                    'analysis': result.get('analysis', {})
-                })
-                
-            elif message.get('type') == 'describe':
+                await manager.send_message(
+                    websocket,
+                    {
+                        "type": "result",
+                        "success": result.get("success", False),
+                        "message": result.get("message", ""),
+                        "analysis": result.get("analysis", {}),
+                    },
+                )
+
+            elif message.get("type") == "describe":
                 # Get screen description
                 description = await agent.get_screen_description()
-                
-                await manager.send_message(websocket, {
-                    'type': 'description',
-                    'description': description
-                })
-            
+
+                await manager.send_message(
+                    websocket, {"type": "description", "description": description}
+                )
+
             else:
-                await manager.send_message(websocket, {
-                    'type': 'error',
-                    'message': 'Unknown message type'
-                })
-                
+                await manager.send_message(
+                    websocket, {"type": "error", "message": "Unknown message type"}
+                )
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
         logger.info("Client disconnected")
@@ -409,18 +410,18 @@ async def health_check():
     return {
         "status": "healthy",
         "model": settings.opencode_zen_model,
-        "base_url": settings.opencode_zen_base_url
+        "base_url": settings.opencode_zen_base_url,
     }
 
 
 if __name__ == "__main__":
     logger.info(f"Starting AI Mouse Agent on {settings.api_host}:{settings.api_port}")
     logger.info(f"Using model: {settings.opencode_zen_model}")
-    
+
     uvicorn.run(
         "main:app",
         host=settings.api_host,
         port=settings.api_port,
         reload=settings.api_reload,
-        log_level="info"
+        log_level="info",
     )
